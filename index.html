@@ -32,17 +32,20 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- QR Code Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <style>
+        /* Styles CSS Perso pour Animations & UX 3D */
         .card-perspective {
             perspective: 1000px;
         }
         .card-inner {
-            transition: transform 0.2s ease-out, box-shadow 0.2s ease;
+            transition: transform 0.3s ease-out, box-shadow 0.2s ease;
             transform-style: preserve-3d;
         }
-        .card-inner:active {
-            transform: scale(0.95);
+        .card-inner:hover {
+            transform: translateY(-12px) rotateX(8deg) scale(1.05);
         }
         .color-red { background-color: #FF5555; }
         .color-blue { background-color: #5555FF; }
@@ -56,9 +59,11 @@
         .color-green.colorblind-pattern { background-image: linear-gradient(0deg, #fff 10%, transparent 10%); background-size: 6px 6px; }
         .color-yellow.colorblind-pattern { background-image: radial-gradient(#fff 15%, transparent 15%); background-size: 12px 12px; }
 
+        /* Masquer la scrollbar horizontalement mais permettre le scroll */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+        /* Loader animation */
         @keyframes pulse-ring {
             0% { transform: scale(0.95); opacity: 0.8; }
             50% { transform: scale(1.05); opacity: 0.4; }
@@ -81,12 +86,15 @@
         </div>
 
         <div class="flex items-center space-x-2">
+            <!-- Bouton Daltonisme -->
             <button id="btn-colorblind" class="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium transition" title="Mode Accessibilité / Daltonien">
                 👁️ Motif
             </button>
+            <!-- Bouton Son -->
             <button id="btn-sound" class="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium transition">
                 🔊 Son
             </button>
+            <!-- Bouton Quitter -->
             <button id="btn-leave" class="hidden p-2 bg-red-600/80 hover:bg-red-600 rounded-lg text-xs font-medium transition">
                 Quitter
             </button>
@@ -101,12 +109,14 @@
                 <p class="text-slate-400 text-sm">Jouez de 2 à 8 joueurs en local ou en réseau P2P.</p>
             </div>
 
+            <!-- Configuration Joueur local -->
             <div class="space-y-4 mb-6">
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Votre Pseudo</label>
-                    <input type="text" id="input-player-name" value="Joueur iPad" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500 transition">
+                    <input type="text" id="input-player-name" value="Joueur 1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500 transition">
                 </div>
 
+                <!-- Onglets Mode de Jeu -->
                 <div class="flex rounded-xl bg-slate-900 p-1 border border-slate-700">
                     <button id="tab-local" class="flex-1 py-2 text-xs font-bold rounded-lg bg-slate-800 text-white shadow">Mode Local / Bots</button>
                     <button id="tab-online" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">En Ligne (P2P)</button>
@@ -153,8 +163,22 @@
                     </div>
                     <button id="btn-create-room" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold transition">Créer un nouveau salon P2P</button>
                 </div>
+
+                <!-- Options / Règles personnalisées -->
+                <div class="border-t border-slate-700 pt-3 space-y-2">
+                    <span class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Règles Spéciales</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-300">Cumul des cartes +2 / +4</span>
+                        <input type="checkbox" id="rule-stacking" checked class="w-4 h-4 accent-yellow-500">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-300">Pénalité oubli "UNO !" (+2 cartes)</span>
+                        <input type="checkbox" id="rule-uno-penalty" checked class="w-4 h-4 accent-yellow-500">
+                    </div>
+                </div>
             </div>
 
+            <!-- Bouton Lancer -->
             <button id="btn-start-game" class="w-full py-3.5 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-black text-base rounded-xl shadow-lg transition transform active:scale-95">
                 LANCER LA PARTIE 🚀
             </button>
@@ -164,10 +188,15 @@
     <!-- PLATEAU DE JEU (GAME BOARD) -->
     <div id="screen-game" class="hidden flex-1 flex flex-col justify-between p-2 sm:p-4 relative overflow-hidden">
         
-        <div id="other-players-container" class="flex justify-around items-center w-full py-2 px-4 gap-2 overflow-x-auto no-scrollbar"></div>
+        <!-- Zone supérieure : Joueurs adverses -->
+        <div id="other-players-container" class="flex justify-around items-center w-full py-2 px-4 gap-2 overflow-x-auto no-scrollbar">
+            <!-- Dynamiquement généré par JS -->
+        </div>
 
+        <!-- Zone Centrale : Pioche, Défausse, Sens & Actions -->
         <div class="flex-1 flex flex-col justify-center items-center relative my-4">
             
+            <!-- Indicateur du Sens du jeu & Couleur Active -->
             <div id="active-color-indicator" class="mb-4 px-6 py-2 rounded-full border border-white/20 shadow-xl flex items-center gap-3 backdrop-blur-md transition-all duration-300 bg-slate-800">
                 <span class="text-xs uppercase tracking-wider font-semibold text-slate-300">Couleur :</span>
                 <div id="current-color-dot" class="w-5 h-5 rounded-full border border-white/40 shadow-inner color-red"></div>
@@ -175,6 +204,7 @@
             </div>
 
             <div class="flex items-center justify-center gap-6 sm:gap-12">
+                <!-- Pile de Pioche -->
                 <div class="flex flex-col items-center">
                     <div id="deck-pile" class="card-perspective cursor-pointer group">
                         <div class="w-24 h-36 sm:w-28 sm:h-40 rounded-xl bg-gradient-to-br from-slate-800 to-slate-950 border-2 border-slate-600 shadow-2xl flex items-center justify-center card-inner group-hover:border-yellow-400">
@@ -184,12 +214,16 @@
                     <span class="text-xs text-slate-400 font-semibold mt-2">Pioche (<span id="deck-count">0</span>)</span>
                 </div>
 
+                <!-- Pile de Défausse (Dernière carte jouée) -->
                 <div class="flex flex-col items-center">
-                    <div id="discard-pile" class="card-perspective"></div>
+                    <div id="discard-pile" class="card-perspective">
+                        <!-- Carte dynamique générée ici -->
+                    </div>
                     <span class="text-xs text-slate-400 font-semibold mt-2">Défausse</span>
                 </div>
             </div>
 
+            <!-- Boutons Spéciaux en Jeu (UNO ! / Pass) -->
             <div class="mt-6 flex items-center gap-4">
                 <button id="btn-uno" class="px-6 py-3 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-black rounded-full shadow-lg border-2 border-red-300 transform active:scale-90 transition tracking-wider animate-bounce">
                     UNO ! 🔔
@@ -200,15 +234,22 @@
             </div>
         </div>
 
+        <!-- Zone Inférieure : Main du Joueur Actif -->
         <div class="w-full flex flex-col items-center">
+            <!-- Information tour -->
             <div id="turn-info" class="text-center mb-2">
                 <span id="turn-text" class="text-sm font-bold text-yellow-400">C'est votre tour !</span>
             </div>
-            <div id="player-hand" class="flex justify-center items-center gap-[-1.5rem] max-w-full px-4 overflow-x-auto pb-4 no-scrollbar pt-4"></div>
+
+            <!-- Conteneur des Cartes en Main -->
+            <div id="player-hand" class="flex justify-center items-center gap-[-1.5rem] max-w-full px-4 overflow-x-auto pb-4 no-scrollbar pt-4">
+                <!-- Cartes injectées par JS -->
+            </div>
         </div>
+
     </div>
 
-    <!-- MODALE CHOIX DE COULEUR -->
+    <!-- MODALE CHOIX DE COULEUR (CARTE WILD / +4) -->
     <div id="modal-color-picker" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-xs w-full text-center shadow-2xl">
             <h3 class="text-lg font-bold mb-4 text-white">Choisissez une couleur</h3>
@@ -221,7 +262,7 @@
         </div>
     </div>
 
-    <!-- MODALE VICTOIRE -->
+    <!-- MODALE VICTOIRE / FIN DE PARTIE -->
     <div id="modal-game-over" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 p-8 rounded-2xl max-w-md w-full text-center shadow-2xl">
             <div class="text-5xl mb-3">🏆</div>
@@ -233,27 +274,45 @@
         </div>
     </div>
 
+    <!-- CODE JS DU JEU (LOGIQUE COMPLÈTE EN UN FICHIER) -->
     <script>
+        /**
+         * UNO DELUXE - MOTEUR DE JEU JAVASCRIPT
+         */
+
+        // --- ÉTAT DU JEU ---
         const COLORS = ['red', 'blue', 'green', 'yellow'];
         const VALUES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'skip', 'reverse', '+2'];
         
         let gameState = {
-            players: [],
-            deck: [],
-            discardPile: [],
-            currentColor: 'red',
-            currentTurn: 0,
-            direction: 1,
-            rules: { stacking: true, unoPenalty: true },
+            players: [],          // [{id, name, hand: [], isAi: bool, unoSaid: bool}]
+            deck: [],             // Cartes restables dans la pioche
+            discardPile: [],      // Pile de défausse
+            currentColor: 'red',  // Couleur active en jeu
+            currentTurn: 0,       // Index du joueur actif
+            direction: 1,         // 1 = horaire, -1 = anti-horaire
+            rules: {
+                stacking: true,
+                unoPenalty: true
+            },
             isGameOver: false,
-            pendingWildCard: null,
+            pendingWildCard: null,// Carte Wild en attente de choix de couleur
             colorblindMode: false,
             soundEnabled: true
         };
 
+        let peer = null;
+        let connections = [];
+        let isHost = true;
+
+        // --- SYNTHÉTISEUR AUDIO (Web Audio API) ---
         const AudioEngine = {
             ctx: null,
-            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            },
             playCardSound() {
                 if (!gameState.soundEnabled) return;
                 this.init();
@@ -264,8 +323,10 @@
                 osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.1);
                 gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
                 gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
             },
             playUnoSound() {
                 if (!gameState.soundEnabled) return;
@@ -277,16 +338,24 @@
                 osc.frequency.setValueAtTime(880, this.ctx.currentTime + 0.15);
                 gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
                 gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
             }
         };
 
+        // --- LOGIQUE DES CARTES ---
         function createDeck() {
             let deck = [];
             let cardId = 0;
+
+            // Pour chaque couleur
             COLORS.forEach(color => {
+                // Un seul '0' par couleur
                 deck.push({ id: cardId++, color, value: '0' });
+                
+                // Deux cartes pour 1-9, Skip, Reverse, +2
                 for (let i = 0; i < 2; i++) {
                     for (let v = 1; v <= 9; v++) {
                         deck.push({ id: cardId++, color, value: v.toString() });
@@ -296,10 +365,13 @@
                     deck.push({ id: cardId++, color, value: '+2' });
                 }
             });
+
+            // 4 Wild et 4 Wild +4
             for (let i = 0; i < 4; i++) {
                 deck.push({ id: cardId++, color: 'black', value: 'wild' });
                 deck.push({ id: cardId++, color: 'black', value: '+4' });
             }
+
             return shuffle(deck);
         }
 
@@ -311,6 +383,7 @@
             return array;
         }
 
+        // --- DEBUT DE PARTIE ---
         function startGame(playerCount, localName, isAiMatch = true) {
             gameState.deck = createDeck();
             gameState.discardPile = [];
@@ -319,17 +392,35 @@
             gameState.direction = 1;
             gameState.isGameOver = false;
 
-            gameState.players.push({ id: 0, name: localName || 'Joueur 1', hand: [], isAi: false, unoSaid: false });
-            for (let i = 1; i < playerCount; i++) {
-                gameState.players.push({ id: i, name: `Bot ${i}`, hand: [], isAi: isAiMatch, unoSaid: false });
-            }
+            // Création des joueurs
+            gameState.players.push({
+                id: 0,
+                name: localName || 'Joueur 1',
+                hand: [],
+                isAi: false,
+                unoSaid: false
+            });
 
-            for (let i = 0; i < 7; i++) {
-                gameState.players.forEach(player => {
-                    if (gameState.deck.length > 0) player.hand.push(gameState.deck.pop());
+            for (let i = 1; i < playerCount; i++) {
+                gameState.players.push({
+                    id: i,
+                    name: `Bot ${i}`,
+                    hand: [],
+                    isAi: isAiMatch,
+                    unoSaid: false
                 });
             }
 
+            // Distribution de 7 cartes chacun
+            for (let i = 0; i < 7; i++) {
+                gameState.players.forEach(player => {
+                    if (gameState.deck.length > 0) {
+                        player.hand.push(gameState.deck.pop());
+                    }
+                });
+            }
+
+            // Première carte de la défausse (ne doit pas être un +4 pour démarrer proprement)
             let firstCard = gameState.deck.pop();
             while (firstCard.value === '+4') {
                 gameState.deck.unshift(firstCard);
@@ -340,6 +431,7 @@
             gameState.discardPile.push(firstCard);
             gameState.currentColor = firstCard.color === 'black' ? COLORS[Math.floor(Math.random() * COLORS.length)] : firstCard.color;
 
+            // Basculer l'interface
             document.getElementById('screen-lobby').classList.add('hidden');
             document.getElementById('screen-game').classList.remove('hidden');
             document.getElementById('btn-leave').classList.remove('hidden');
@@ -348,9 +440,10 @@
             checkBotTurn();
         }
 
+        // --- VERIFICATION ET JOUEUR DE CARTE ---
         function isValidMove(card) {
             const topCard = gameState.discardPile[gameState.discardPile.length - 1];
-            if (card.color === 'black') return true;
+            if (card.color === 'black') return true; // Les Wilds sont toujours jouables
             if (card.color === gameState.currentColor) return true;
             if (card.value === topCard.value) return true;
             return false;
@@ -366,26 +459,37 @@
             const card = player.hand[cardIndex];
             if (!isValidMove(card)) return;
 
+            // Retirer de la main
             player.hand.splice(cardIndex, 1);
             gameState.discardPile.push(card);
             AudioEngine.playCardSound();
 
-            if (player.hand.length !== 1) player.unoSaid = false;
+            // Gestion du UNO (Reset du tag s'il a plus de 1 carte)
+            if (player.hand.length !== 1) {
+                player.unoSaid = false;
+            }
 
+            // Si c'est une carte Wild, définir la couleur
             if (card.color === 'black') {
                 if (chosenColor) {
                     gameState.currentColor = chosenColor;
                     applyCardEffects(card);
                 } else if (!player.isAi) {
+                    // Ouvrir modale choix de couleur pour l'humain
                     gameState.pendingWildCard = card;
                     document.getElementById('modal-color-picker').classList.remove('hidden');
                     return;
                 } else {
+                    // Choix auto par le Bot (couleur la plus représentée dans sa main)
                     const colorCounts = { red: 0, blue: 0, green: 0, yellow: 0 };
                     player.hand.forEach(c => { if(c.color !== 'black') colorCounts[c.color]++; });
-                    let bestColor = 'red', maxCount = -1;
+                    let bestColor = 'red';
+                    let maxCount = -1;
                     for (let c in colorCounts) {
-                        if (colorCounts[c] > maxCount) { maxCount = colorCounts[c]; bestColor = c; }
+                        if (colorCounts[c] > maxCount) {
+                            maxCount = colorCounts[c];
+                            bestColor = c;
+                        }
                     }
                     gameState.currentColor = bestColor;
                     applyCardEffects(card);
@@ -397,42 +501,57 @@
         }
 
         function applyCardEffects(card) {
+            // Vérifier Victoire
             const currentPlayer = gameState.players[gameState.currentTurn];
             if (currentPlayer.hand.length === 0) {
                 handleGameOver(currentPlayer);
                 return;
             }
 
+            // Effets Spéciaux
             let skipNext = false;
             if (card.value === 'reverse') {
-                if (gameState.players.length === 2) skipNext = true;
-                else gameState.direction *= -1;
+                if (gameState.players.length === 2) {
+                    skipNext = true; // À 2 joueurs, Inverser = Passer le tour
+                } else {
+                    gameState.direction *= -1;
+                }
             } else if (card.value === 'skip') {
                 skipNext = true;
             } else if (card.value === '+2') {
-                drawCardsForPlayer(getNextPlayerIndex(1), 2);
+                const nextPlayer = getNextPlayerIndex(1);
+                drawCardsForPlayer(nextPlayer, 2);
                 skipNext = true;
             } else if (card.value === '+4') {
-                drawCardsForPlayer(getNextPlayerIndex(1), 4);
+                const nextPlayer = getNextPlayerIndex(1);
+                drawCardsForPlayer(nextPlayer, 4);
                 skipNext = true;
             }
 
+            // Passer au joueur suivant
             advanceTurn(skipNext ? 2 : 1);
         }
 
         function drawCardsForPlayer(playerIndex, count) {
             const targetPlayer = gameState.players[playerIndex];
             for (let i = 0; i < count; i++) {
-                if (gameState.deck.length === 0) recycleDiscardPile();
-                if (gameState.deck.length > 0) targetPlayer.hand.push(gameState.deck.pop());
+                if (gameState.deck.length === 0) {
+                    recycleDiscardPile();
+                }
+                if (gameState.deck.length > 0) {
+                    targetPlayer.hand.push(gameState.deck.pop());
+                }
             }
         }
 
         function drawCardCurrentPlayer() {
             const player = gameState.players[gameState.currentTurn];
             drawCardsForPlayer(gameState.currentTurn, 1);
+            
+            // Si la carte tirée est jouable, l'interface propose de la jouer ou de passer
             updateUI();
             
+            // Passer directement si c'est un bot
             if (player.isAi) {
                 const drawnCard = player.hand[player.hand.length - 1];
                 if (isValidMove(drawnCard)) {
@@ -450,7 +569,10 @@
             const topCard = gameState.discardPile.pop();
             gameState.deck = shuffle(gameState.discardPile);
             gameState.discardPile = [topCard];
-            gameState.deck.forEach(c => { if (c.value === 'wild' || c.value === '+4') c.color = 'black'; });
+            // Rendre les cartes noires à leur couleur d'origine dans la pioche
+            gameState.deck.forEach(c => {
+                if (c.value === 'wild' || c.value === '+4') c.color = 'black';
+            });
         }
 
         function getNextPlayerIndex(steps = 1) {
@@ -467,34 +589,47 @@
             checkBotTurn();
         }
 
+        // --- INTELLIGENCE ARTIFICIELLE ---
         function checkBotTurn() {
             const player = gameState.players[gameState.currentTurn];
             if (!player || !player.isAi || gameState.isGameOver) return;
 
             setTimeout(() => {
+                // Réflexion UNO du Bot
                 if (player.hand.length === 2 && !player.unoSaid) {
                     player.unoSaid = true;
                     AudioEngine.playUnoSound();
                 }
+
+                // Trouver les cartes jouables
                 const playableCards = player.hand.filter(c => isValidMove(c));
+
                 if (playableCards.length > 0) {
+                    // Jouer une carte valide
                     const cardToPlay = playableCards[Math.floor(Math.random() * playableCards.length)];
                     playCard(gameState.currentTurn, cardToPlay.id);
                 } else {
+                    // Piocher
                     drawCardCurrentPlayer();
                 }
             }, 1000);
         }
 
+        // --- METTRE À JOUR L'INTERFACE (RENDER UI) ---
         function updateUI() {
             const topCard = gameState.discardPile[gameState.discardPile.length - 1];
-            document.getElementById('discard-pile').innerHTML = renderCardHTML(topCard, false);
+            
+            // 1. Défausse
+            const discardEl = document.getElementById('discard-pile');
+            discardEl.innerHTML = renderCardHTML(topCard, false);
 
+            // 2. Couleur active & sens
             const colorDot = document.getElementById('current-color-dot');
             colorDot.className = `w-5 h-5 rounded-full border border-white/40 shadow-inner color-${gameState.currentColor} ${gameState.colorblindMode ? 'colorblind-pattern' : ''}`;
             document.getElementById('direction-arrow').textContent = gameState.direction === 1 ? '↻' : '↺';
             document.getElementById('deck-count').textContent = gameState.deck.length;
 
+            // 3. Main du joueur humain local (Joueur 0)
             const handEl = document.getElementById('player-hand');
             const localPlayer = gameState.players[0];
             handEl.innerHTML = '';
@@ -504,22 +639,18 @@
                 const cardDiv = document.createElement('div');
                 cardDiv.className = `card-perspective cursor-pointer transition transform ${isPlayable ? 'hover:-translate-y-4 hover:scale-105' : 'opacity-75'}`;
                 cardDiv.innerHTML = renderCardHTML(card, isPlayable);
-                
-                // --- SYSTÈMES DE CLIC OPTIMISÉS IPAD / SAFARI ---
-                const triggerAction = (e) => {
-                    e.preventDefault();
-                    if (isPlayable) playCard(0, card.id);
-                };
-                cardDiv.onclick = triggerAction;
-                cardDiv.ontouchend = triggerAction;
-
+                if (isPlayable) {
+                    cardDiv.onclick = () => playCard(0, card.id);
+                }
                 handEl.appendChild(cardDiv);
             });
 
+            // 4. Adversaires
             const othersEl = document.getElementById('other-players-container');
             othersEl.innerHTML = '';
+            
             gameState.players.forEach((p, idx) => {
-                if (idx === 0) return;
+                if (idx === 0) return; // Sauter le joueur local
                 const isCurrent = gameState.currentTurn === idx;
                 const pDiv = document.createElement('div');
                 pDiv.className = `flex flex-col items-center p-2 rounded-xl bg-slate-800/80 border ${isCurrent ? 'border-yellow-400 active-turn-ring' : 'border-slate-700'} min-w-[80px]`;
@@ -534,6 +665,7 @@
                 othersEl.appendChild(pDiv);
             });
 
+            // 5. Indicateur de tour
             const turnText = document.getElementById('turn-text');
             if (gameState.currentTurn === 0) {
                 turnText.textContent = "C'est à votre tour de jouer !";
@@ -561,6 +693,7 @@
             `;
         }
 
+        // --- GESTION DU BOUTON UNO ET VICTOIRE ---
         function handleGameOver(winner) {
             gameState.isGameOver = true;
             document.getElementById('winner-name').textContent = `${winner.name} a remporté la partie ! 🎉`;
@@ -568,8 +701,11 @@
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         }
 
+        // --- ÉVÉNEMENTS BOUTONS & INTERACTION ---
         document.getElementById('deck-pile').onclick = () => {
-            if (gameState.currentTurn === 0 && !gameState.isGameOver) drawCardCurrentPlayer();
+            if (gameState.currentTurn === 0 && !gameState.isGameOver) {
+                drawCardCurrentPlayer();
+            }
         };
 
         document.getElementById('btn-uno').onclick = () => {
@@ -582,12 +718,14 @@
         };
 
         document.getElementById('btn-pass').onclick = () => {
-            if (gameState.currentTurn === 0) advanceTurn(1);
+            if (gameState.currentTurn === 0) {
+                advanceTurn(1);
+            }
         };
 
+        // Modale Sélection de Couleur
         document.querySelectorAll('.btn-select-color').forEach(btn => {
-            const colorAction = (e) => {
-                e.preventDefault();
+            btn.onclick = (e) => {
                 const color = e.target.getAttribute('data-color');
                 document.getElementById('modal-color-picker').classList.add('hidden');
                 if (gameState.pendingWildCard) {
@@ -596,20 +734,21 @@
                     gameState.pendingWildCard = null;
                 }
             };
-            btn.onclick = colorAction;
-            btn.ontouchend = colorAction;
         });
 
+        // Mode Daltonien Toggle
         document.getElementById('btn-colorblind').onclick = () => {
             gameState.colorblindMode = !gameState.colorblindMode;
             updateUI();
         };
 
+        // Audio Toggle
         document.getElementById('btn-sound').onclick = () => {
             gameState.soundEnabled = !gameState.soundEnabled;
             document.getElementById('btn-sound').textContent = gameState.soundEnabled ? '🔊 Son' : '🔇 Muet';
         };
 
+        // Relancer
         document.getElementById('btn-restart').onclick = () => {
             document.getElementById('modal-game-over').classList.add('hidden');
             const count = parseInt(document.getElementById('select-player-count').value);
@@ -617,14 +756,18 @@
             startGame(count, name);
         };
 
-        document.getElementById('btn-leave').onclick = () => location.reload();
+        document.getElementById('btn-leave').onclick = () => {
+            location.reload();
+        };
 
+        // Lancement Interface Lobby
         document.getElementById('btn-start-game').onclick = () => {
             const count = parseInt(document.getElementById('select-player-count').value);
             const name = document.getElementById('input-player-name').value || 'Joueur 1';
             startGame(count, name);
         };
 
+        // Gestion Onglets (Local / Online)
         document.getElementById('tab-local').onclick = () => {
             document.getElementById('panel-local').classList.remove('hidden');
             document.getElementById('panel-online').classList.add('hidden');
