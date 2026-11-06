@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>UNO Deluxe Online P2P version 2</title>
+    <title>UNO Deluxe Online</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -19,30 +19,38 @@
                         unoDark: '#0F172A',
                     },
                     boxShadow: {
-                        'glow-red': '0 0 15px rgba(255, 85, 85, 0.8)',
-                        'glow-blue': '0 0 15px rgba(85, 85, 255, 0.8)',
-                        'glow-green': '0 0 15px rgba(85, 170, 85, 0.8)',
-                        'glow-yellow': '0 0 15px rgba(255, 170, 0, 0.8)',
+                        'glow-red': '0 0 15px rgba(255, 85, 85, 0.6)',
+                        'glow-blue': '0 0 15px rgba(85, 85, 255, 0.6)',
+                        'glow-green': '0 0 15px rgba(85, 170, 85, 0.6)',
+                        'glow-yellow': '0 0 15px rgba(255, 170, 0, 0.6)',
                     }
                 }
             }
         }
     </script>
-    <!-- PeerJS pour le P2P multi-appareils -->
+    <!-- PeerJS pour le P2P -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
-        .card-perspective { perspective: 1000px; }
-        .card-inner { transition: transform 0.2s ease-out; transform-style: preserve-3d; }
-        .card-inner:active { transform: scale(0.95); }
+        .card-perspective {
+            perspective: 1000px;
+        }
+        .card-inner {
+            transition: transform 0.2s ease-out, box-shadow 0.2s ease;
+            transform-style: preserve-3d;
+        }
+        .card-inner:active {
+            transform: scale(0.95);
+        }
         .color-red { background-color: #FF5555; }
         .color-blue { background-color: #5555FF; }
         .color-green { background-color: #55AA55; }
         .color-yellow { background-color: #FFAA00; }
         .color-black { background: linear-gradient(135deg, #1e293b, #0f172a); }
 
+        /* Motifs d'accessibilité (Daltonisme) */
         .color-red.colorblind-pattern { background-image: radial-gradient(#fff 20%, transparent 20%); background-size: 8px 8px; }
         .color-blue.colorblind-pattern { background-image: linear-gradient(45deg, #fff 25%, transparent 25%, transparent 50%, #fff 50%, #fff 75%, transparent 75%, transparent); background-size: 8px 8px; }
         .color-green.colorblind-pattern { background-image: linear-gradient(0deg, #fff 10%, transparent 10%); background-size: 6px 6px; }
@@ -50,6 +58,7 @@
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
         @keyframes pulse-ring {
             0% { transform: scale(0.95); opacity: 0.8; }
             50% { transform: scale(1.05); opacity: 0.4; }
@@ -60,152 +69,174 @@
 </head>
 <body class="bg-slate-900 text-white font-sans min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
 
-    <!-- EN-TÊTE -->
-    <header class="p-3 bg-slate-800/90 backdrop-blur-md border-b border-slate-700 flex justify-between items-center z-20">
+    <!-- BARRE DE NAVIGATION ET EN-TÊTE -->
+    <header class="p-3 bg-slate-800/80 backdrop-blur-md border-b border-slate-700 flex justify-between items-center z-20">
         <div class="flex items-center space-x-3">
-            <h1 class="text-xl font-black tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-red-500 via-yellow-400 to-blue-500">
+            <h1 class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-red-500 via-yellow-400 to-blue-500">
                 UNO DELUXE
             </h1>
-            <span id="room-badge" class="hidden px-2 py-0.5 text-xs font-mono bg-slate-700 rounded text-yellow-400 border border-slate-600">
-                Salon: <span id="display-room-id">----</span>
+            <span id="room-badge" class="hidden px-2.5 py-1 text-xs font-semibold bg-slate-700 rounded-full text-slate-300 border border-slate-600">
+                Salon: <span id="display-room-id" class="text-yellow-400 font-mono">----</span>
             </span>
         </div>
+
         <div class="flex items-center space-x-2">
-            <button id="btn-colorblind" class="p-2 bg-slate-700 rounded-lg text-xs font-medium" title="Mode Daltonien">👁️ Motif</button>
-            <button id="btn-sound" class="p-2 bg-slate-700 rounded-lg text-xs font-medium">🔊 Son</button>
-            <button id="btn-leave" class="hidden p-2 bg-red-600 rounded-lg text-xs font-medium">Quitter</button>
+            <button id="btn-colorblind" class="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium transition" title="Mode Accessibilité / Daltonien">
+                👁️ Motif
+            </button>
+            <button id="btn-sound" class="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium transition">
+                🔊 Son
+            </button>
+            <button id="btn-leave" class="hidden p-2 bg-red-600/80 hover:bg-red-600 rounded-lg text-xs font-medium transition">
+                Quitter
+            </button>
         </div>
     </header>
 
-    <!-- ÉCRAN D'ACCUEIL / LOBBY -->
+    <!-- ÉCRAN D'ACCUEIL & CONFIGURATION (LOBBY) -->
     <div id="screen-lobby" class="flex-1 flex flex-col items-center justify-center p-4 z-10">
-        <div class="w-full max-w-md bg-slate-800/95 rounded-2xl p-6 border border-slate-700 shadow-2xl backdrop-blur-xl space-y-4">
-            <div class="text-center">
-                <h2 class="text-lg font-bold">Configuration de la Partie</h2>
-                <p class="text-slate-400 text-xs">Jouez sur plusieurs tablettes en ligne sans serveur !</p>
+        <div class="w-full max-w-lg bg-slate-800/90 rounded-2xl p-6 border border-slate-700 shadow-2xl backdrop-blur-xl">
+            <div class="text-center mb-6">
+                <h2 class="text-xl font-bold mb-1">Bienvenue sur UNO Online</h2>
+                <p class="text-slate-400 text-sm">Jouez de 2 à 8 joueurs en local ou en réseau P2P.</p>
             </div>
 
-            <div>
-                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Votre Pseudo</label>
-                <input type="text" id="input-player-name" value="Joueur iPad" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-yellow-500">
-            </div>
-
-            <div class="flex rounded-xl bg-slate-900 p-1 border border-slate-700">
-                <button id="tab-local" class="flex-1 py-2 text-xs font-bold rounded-lg bg-slate-800 text-white shadow">Mode Solo / Bots</button>
-                <button id="tab-online" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white">Multijoueur P2P</button>
-            </div>
-
-            <!-- Options Solo -->
-            <div id="panel-local" class="space-y-3">
+            <div class="space-y-4 mb-6">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Nombre de Joueurs (2 à 8)</label>
-                    <select id="select-player-count" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-yellow-500">
-                        <option value="2">2 Joueurs</option>
-                        <option value="3">3 Joueurs</option>
-                        <option value="4" selected>4 Joueurs</option>
-                        <option value="6">6 Joueurs</option>
-                        <option value="8">8 Joueurs</option>
-                    </select>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Votre Pseudo</label>
+                    <input type="text" id="input-player-name" value="Joueur iPad" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500 transition">
                 </div>
-                <button id="btn-start-local" class="w-full py-3 bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 font-black rounded-xl shadow-lg active:scale-95 transition">
-                    JOUER CONTRE LES BOTS 🤖
-                </button>
-            </div>
 
-            <!-- Options P2P En Ligne -->
-            <div id="panel-online" class="hidden space-y-3">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Rejoindre un Salon (Code)</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="input-room-code" placeholder="Ex: UNO123" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white font-mono uppercase text-sm focus:outline-none focus:border-yellow-500">
-                        <button id="btn-join-room" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold">Rejoindre</button>
+                <div class="flex rounded-xl bg-slate-900 p-1 border border-slate-700">
+                    <button id="tab-local" class="flex-1 py-2 text-xs font-bold rounded-lg bg-slate-800 text-white shadow">Mode Local / Bots</button>
+                    <button id="tab-online" class="flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">En Ligne (P2P)</button>
+                </div>
+
+                <!-- Panneau Local -->
+                <div id="panel-local" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Nombre total de joueurs (2 à 8)</label>
+                        <select id="select-player-count" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500">
+                            <option value="2">2 Joueurs</option>
+                            <option value="3">3 Joueurs</option>
+                            <option value="4" selected>4 Joueurs</option>
+                            <option value="5">5 Joueurs</option>
+                            <option value="6">6 Joueurs</option>
+                            <option value="7">7 Joueurs</option>
+                            <option value="8">8 Joueurs</option>
+                        </select>
+                    </div>
+
+                    <div class="border-t border-slate-700/50 pt-3">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Difficulté des Bots IA</label>
+                        <div class="flex gap-2">
+                            <button data-ai="easy" class="btn-ai-diff flex-1 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-900">Facile</button>
+                            <button data-ai="medium" class="btn-ai-diff flex-1 py-1.5 text-xs rounded-lg border border-yellow-500 bg-yellow-500/20 text-yellow-400 font-bold">Moyen</button>
+                            <button data-ai="hard" class="btn-ai-diff flex-1 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-900">Expert</button>
+                        </div>
                     </div>
                 </div>
-                <div class="text-center text-xs text-slate-500 font-bold">OU</div>
-                <button id="btn-create-room" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl shadow-lg active:scale-95 transition">
-                    CRÉER UN SALON EN LIGNE 🌐
-                </button>
-                <div id="waiting-room-status" class="hidden text-center text-xs text-yellow-400 animate-pulse font-semibold pt-2">
-                    En attente de joueurs... Partagez votre code de salon !
+
+                <!-- Panneau En Ligne -->
+                <div id="panel-online" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Rejoindre un Salon</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="input-room-code" placeholder="Code du salon..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white font-mono uppercase focus:outline-none focus:border-yellow-500">
+                            <button id="btn-join-room" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-bold transition">Rejoindre</button>
+                        </div>
+                    </div>
+                    <div class="relative flex py-1 items-center">
+                        <div class="flex-grow border-t border-slate-700"></div>
+                        <span class="flex-shrink mx-4 text-xs text-slate-500">OU</span>
+                        <div class="flex-grow border-t border-slate-700"></div>
+                    </div>
+                    <button id="btn-create-room" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold transition">Créer un nouveau salon P2P</button>
                 </div>
             </div>
+
+            <button id="btn-start-game" class="w-full py-3.5 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-black text-base rounded-xl shadow-lg transition transform active:scale-95">
+                LANCER LA PARTIE 🚀
+            </button>
         </div>
     </div>
 
-    <!-- PLATEAU DE JEU -->
-    <div id="screen-game" class="hidden flex-1 flex flex-col justify-between p-2 sm:p-4 relative">
-        <!-- Adversaires -->
-        <div id="other-players-container" class="flex justify-around items-center w-full py-1 px-2 gap-2 overflow-x-auto no-scrollbar"></div>
+    <!-- PLATEAU DE JEU (GAME BOARD) -->
+    <div id="screen-game" class="hidden flex-1 flex flex-col justify-between p-2 sm:p-4 relative overflow-hidden">
+        
+        <div id="other-players-container" class="flex justify-around items-center w-full py-2 px-4 gap-2 overflow-x-auto no-scrollbar"></div>
 
-        <!-- Centre -->
-        <div class="flex-1 flex flex-col justify-center items-center relative my-2">
-            <div id="active-color-indicator" class="mb-3 px-5 py-1.5 rounded-full border border-white/20 shadow-xl flex items-center gap-3 backdrop-blur-md bg-slate-800">
-                <span class="text-xs uppercase font-semibold text-slate-300">Couleur :</span>
-                <div id="current-color-dot" class="w-4 h-4 rounded-full border border-white/40 color-red"></div>
-                <span id="direction-arrow" class="text-base font-extrabold ml-1 text-yellow-400">↻</span>
+        <div class="flex-1 flex flex-col justify-center items-center relative my-4">
+            
+            <div id="active-color-indicator" class="mb-4 px-6 py-2 rounded-full border border-white/20 shadow-xl flex items-center gap-3 backdrop-blur-md transition-all duration-300 bg-slate-800">
+                <span class="text-xs uppercase tracking-wider font-semibold text-slate-300">Couleur :</span>
+                <div id="current-color-dot" class="w-5 h-5 rounded-full border border-white/40 shadow-inner color-red"></div>
+                <span id="direction-arrow" class="text-lg font-extrabold ml-2 text-yellow-400">↻</span>
             </div>
 
-            <div class="flex items-center justify-center gap-6 sm:gap-10">
+            <div class="flex items-center justify-center gap-6 sm:gap-12">
                 <div class="flex flex-col items-center">
-                    <div id="deck-pile" class="card-perspective cursor-pointer">
-                        <div class="w-20 h-28 sm:w-24 sm:h-34 rounded-xl bg-gradient-to-br from-slate-800 to-slate-950 border-2 border-slate-600 shadow-2xl flex items-center justify-center card-inner">
-                            <span class="text-yellow-400 font-extrabold text-xl tracking-tighter -rotate-12">UNO</span>
+                    <div id="deck-pile" class="card-perspective cursor-pointer group">
+                        <div class="w-24 h-36 sm:w-28 sm:h-40 rounded-xl bg-gradient-to-br from-slate-800 to-slate-950 border-2 border-slate-600 shadow-2xl flex items-center justify-center card-inner group-hover:border-yellow-400">
+                            <span class="text-yellow-400 font-extrabold text-2xl tracking-tighter transform -rotate-12 group-hover:scale-110 transition">UNO</span>
                         </div>
                     </div>
-                    <span class="text-[11px] text-slate-400 font-semibold mt-1">Pioche (<span id="deck-count">0</span>)</span>
+                    <span class="text-xs text-slate-400 font-semibold mt-2">Pioche (<span id="deck-count">0</span>)</span>
                 </div>
 
                 <div class="flex flex-col items-center">
                     <div id="discard-pile" class="card-perspective"></div>
-                    <span class="text-[11px] text-slate-400 font-semibold mt-1">Défausse</span>
+                    <span class="text-xs text-slate-400 font-semibold mt-2">Défausse</span>
                 </div>
             </div>
 
-            <div class="mt-4 flex items-center gap-3">
-                <button id="btn-uno" class="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-black rounded-full shadow-lg border-2 border-red-300 active:scale-90 transition text-xs">
+            <div class="mt-6 flex items-center gap-4">
+                <button id="btn-uno" class="px-6 py-3 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-black rounded-full shadow-lg border-2 border-red-300 transform active:scale-90 transition tracking-wider animate-bounce">
                     UNO ! 🔔
                 </button>
-                <button id="btn-pass" class="hidden px-4 py-2 bg-slate-700 hover:bg-slate-600 text-xs font-bold rounded-full border border-slate-500">
-                    Passer ⏩
+                <button id="btn-pass" class="hidden px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-xs font-bold rounded-full border border-slate-500 transition">
+                    Passer le tour ⏩
                 </button>
             </div>
         </div>
 
-        <!-- Main du Joueur -->
         <div class="w-full flex flex-col items-center">
-            <div id="turn-info" class="text-center mb-1">
-                <span id="turn-text" class="text-xs font-bold text-yellow-400">C'est votre tour !</span>
+            <div id="turn-info" class="text-center mb-2">
+                <span id="turn-text" class="text-sm font-bold text-yellow-400">C'est votre tour !</span>
             </div>
-            <div id="player-hand" class="flex justify-center items-center gap-[-1rem] max-w-full px-2 overflow-x-auto pb-2 no-scrollbar pt-2"></div>
+            <div id="player-hand" class="flex justify-center items-center gap-[-1.5rem] max-w-full px-4 overflow-x-auto pb-4 no-scrollbar pt-4"></div>
         </div>
     </div>
 
     <!-- MODALE CHOIX DE COULEUR -->
     <div id="modal-color-picker" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-xs w-full text-center shadow-2xl">
-            <h3 class="text-base font-bold mb-3 text-white">Choisissez une couleur</h3>
-            <div class="grid grid-cols-2 gap-3">
-                <button data-color="red" class="btn-select-color h-16 rounded-xl color-red border border-white/20 shadow font-bold text-white text-xs">Rouge</button>
-                <button data-color="blue" class="btn-select-color h-16 rounded-xl color-blue border border-white/20 shadow font-bold text-white text-xs">Bleu</button>
-                <button data-color="green" class="btn-select-color h-16 rounded-xl color-green border border-white/20 shadow font-bold text-white text-xs">Vert</button>
-                <button data-color="yellow" class="btn-select-color h-16 rounded-xl color-yellow border border-white/20 shadow font-bold text-slate-950 text-xs">Jaune</button>
+            <h3 class="text-lg font-bold mb-4 text-white">Choisissez une couleur</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <button data-color="red" class="btn-select-color h-20 rounded-xl color-red border-2 border-white/20 shadow-lg hover:scale-105 transition font-bold text-white">Rouge</button>
+                <button data-color="blue" class="btn-select-color h-20 rounded-xl color-blue border-2 border-white/20 shadow-lg hover:scale-105 transition font-bold text-white">Bleu</button>
+                <button data-color="green" class="btn-select-color h-20 rounded-xl color-green border-2 border-white/20 shadow-lg hover:scale-105 transition font-bold text-white">Vert</button>
+                <button data-color="yellow" class="btn-select-color h-20 rounded-xl color-yellow border-2 border-white/20 shadow-lg hover:scale-105 transition font-bold text-slate-900">Jaune</button>
             </div>
         </div>
     </div>
 
     <!-- MODALE VICTOIRE -->
     <div id="modal-game-over" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl">
-            <div class="text-4xl mb-2">🏆</div>
-            <h2 id="winner-name" class="text-xl font-black text-yellow-400 mb-1">Gagnant !</h2>
-            <p class="text-xs text-slate-300 mb-4">La partie est terminée.</p>
-            <button id="btn-restart" class="w-full py-2.5 bg-yellow-500 text-slate-950 font-bold rounded-xl text-xs">Rejouer</button>
+        <div class="bg-slate-800 border border-slate-700 p-8 rounded-2xl max-w-md w-full text-center shadow-2xl">
+            <div class="text-5xl mb-3">🏆</div>
+            <h2 id="winner-name" class="text-2xl font-black text-yellow-400 mb-2">Joueur 1 a gagné !</h2>
+            <p class="text-sm text-slate-300 mb-6">Partie terminée avec succès.</p>
+            <button id="btn-restart" class="w-full py-3 bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 font-bold rounded-xl shadow-lg hover:brightness-110 transition">
+                Rejouer une partie
+            </button>
         </div>
     </div>
 
-    <!-- MOTEUR JAVASCRIPT CORRIGÉ ET OPTIMISÉ IPAD/P2P -->
     <script>
         const COLORS = ['red', 'blue', 'green', 'yellow'];
+        const VALUES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'skip', 'reverse', '+2'];
+        
         let gameState = {
             players: [],
             deck: [],
@@ -213,56 +244,74 @@
             currentColor: 'red',
             currentTurn: 0,
             direction: 1,
+            rules: { stacking: true, unoPenalty: true },
             isGameOver: false,
+            pendingWildCard: null,
             colorblindMode: false,
             soundEnabled: true
         };
 
-        let myPlayerId = 0;
-        let peer = null;
-        let connections = [];
-        let isHost = true;
-        let pendingWildCard = null;
-
         const AudioEngine = {
             ctx: null,
             init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
-            play() {
+            playCardSound() {
                 if (!gameState.soundEnabled) return;
                 this.init();
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
-                osc.frequency.setValueAtTime(350, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.08);
-                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
                 osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.08);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+            },
+            playUnoSound() {
+                if (!gameState.soundEnabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(880, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.3);
             }
         };
 
         function createDeck() {
-            let deck = [], id = 0;
+            let deck = [];
+            let cardId = 0;
             COLORS.forEach(color => {
-                deck.push({ id: id++, color, value: '0' });
+                deck.push({ id: cardId++, color, value: '0' });
                 for (let i = 0; i < 2; i++) {
-                    for (let v = 1; v <= 9; v++) deck.push({ id: id++, color, value: v.toString() });
-                    deck.push({ id: id++, color, value: 'skip' });
-                    deck.push({ id: id++, color, value: 'reverse' });
-                    deck.push({ id: id++, color, value: '+2' });
+                    for (let v = 1; v <= 9; v++) {
+                        deck.push({ id: cardId++, color, value: v.toString() });
+                    }
+                    deck.push({ id: cardId++, color, value: 'skip' });
+                    deck.push({ id: cardId++, color, value: 'reverse' });
+                    deck.push({ id: cardId++, color, value: '+2' });
                 }
             });
             for (let i = 0; i < 4; i++) {
-                deck.push({ id: id++, color: 'black', value: 'wild' });
-                deck.push({ id: id++, color: 'black', value: '+4' });
+                deck.push({ id: cardId++, color: 'black', value: 'wild' });
+                deck.push({ id: cardId++, color: 'black', value: '+4' });
             }
-            return deck.sort(() => Math.random() - 0.5);
+            return shuffle(deck);
         }
 
-        // Mode Local / Bot
-        function startLocalGame(playerCount, localName) {
-            isHost = true;
-            myPlayerId = 0;
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function startGame(playerCount, localName, isAiMatch = true) {
             gameState.deck = createDeck();
             gameState.discardPile = [];
             gameState.players = [];
@@ -270,187 +319,196 @@
             gameState.direction = 1;
             gameState.isGameOver = false;
 
-            gameState.players.push({ id: 0, name: localName, hand: [], isAi: false, unoSaid: false });
+            gameState.players.push({ id: 0, name: localName || 'Joueur 1', hand: [], isAi: false, unoSaid: false });
             for (let i = 1; i < playerCount; i++) {
-                gameState.players.push({ id: i, name: `Bot ${i}`, hand: [], isAi: true, unoSaid: false });
+                gameState.players.push({ id: i, name: `Bot ${i}`, hand: [], isAi: isAiMatch, unoSaid: false });
             }
 
             for (let i = 0; i < 7; i++) {
-                gameState.players.forEach(p => { if (gameState.deck.length) p.hand.push(gameState.deck.pop()); });
+                gameState.players.forEach(player => {
+                    if (gameState.deck.length > 0) player.hand.push(gameState.deck.pop());
+                });
             }
 
-            let first = gameState.deck.pop();
-            while (first.value === '+4') { gameState.deck.unshift(first); gameState.deck.sort(() => Math.random() - 0.5); first = gameState.deck.pop(); }
-            gameState.discardPile.push(first);
-            gameState.currentColor = first.color === 'black' ? 'red' : first.color;
+            let firstCard = gameState.deck.pop();
+            while (firstCard.value === '+4') {
+                gameState.deck.unshift(firstCard);
+                gameState.deck = shuffle(gameState.deck);
+                firstCard = gameState.deck.pop();
+            }
 
-            switchToGameScreen();
-        }
+            gameState.discardPile.push(firstCard);
+            gameState.currentColor = firstCard.color === 'black' ? COLORS[Math.floor(Math.random() * COLORS.length)] : firstCard.color;
 
-        function switchToGameScreen() {
             document.getElementById('screen-lobby').classList.add('hidden');
             document.getElementById('screen-game').classList.remove('hidden');
             document.getElementById('btn-leave').classList.remove('hidden');
+
             updateUI();
             checkBotTurn();
         }
 
         function isValidMove(card) {
-            const top = gameState.discardPile[gameState.discardPile.length - 1];
+            const topCard = gameState.discardPile[gameState.discardPile.length - 1];
             if (card.color === 'black') return true;
             if (card.color === gameState.currentColor) return true;
-            if (card.value === top.value) return true;
+            if (card.value === topCard.value) return true;
             return false;
         }
 
-        function playCard(playerIdx, cardId, chosenColor = null) {
-            if (gameState.currentTurn !== playerIdx || gameState.isGameOver) return;
-            const player = gameState.players[playerIdx];
-            const cIdx = player.hand.findIndex(c => c.id === cardId);
-            if (cIdx === -1) return;
+        function playCard(playerIndex, cardId, chosenColor = null) {
+            if (gameState.currentTurn !== playerIndex || gameState.isGameOver) return;
 
-            const card = player.hand[cIdx];
+            const player = gameState.players[playerIndex];
+            const cardIndex = player.hand.findIndex(c => c.id === cardId);
+            if (cardIndex === -1) return;
+
+            const card = player.hand[cardIndex];
             if (!isValidMove(card)) return;
 
-            player.hand.splice(cIdx, 1);
+            player.hand.splice(cardIndex, 1);
             gameState.discardPile.push(card);
-            AudioEngine.play();
+            AudioEngine.playCardSound();
 
             if (player.hand.length !== 1) player.unoSaid = false;
 
             if (card.color === 'black') {
                 if (chosenColor) {
                     gameState.currentColor = chosenColor;
-                    applyEffects(card);
-                } else if (!player.isAi && playerIdx === myPlayerId) {
-                    pendingWildCard = card;
+                    applyCardEffects(card);
+                } else if (!player.isAi) {
+                    gameState.pendingWildCard = card;
                     document.getElementById('modal-color-picker').classList.remove('hidden');
                     return;
                 } else {
-                    gameState.currentColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-                    applyEffects(card);
+                    const colorCounts = { red: 0, blue: 0, green: 0, yellow: 0 };
+                    player.hand.forEach(c => { if(c.color !== 'black') colorCounts[c.color]++; });
+                    let bestColor = 'red', maxCount = -1;
+                    for (let c in colorCounts) {
+                        if (colorCounts[c] > maxCount) { maxCount = colorCounts[c]; bestColor = c; }
+                    }
+                    gameState.currentColor = bestColor;
+                    applyCardEffects(card);
                 }
             } else {
                 gameState.currentColor = card.color;
-                applyEffects(card);
+                applyCardEffects(card);
             }
-            syncStateToPeers();
         }
 
-        function applyEffects(card) {
-            const cur = gameState.players[gameState.currentTurn];
-            if (cur.hand.length === 0) {
-                endGame(cur);
+        function applyCardEffects(card) {
+            const currentPlayer = gameState.players[gameState.currentTurn];
+            if (currentPlayer.hand.length === 0) {
+                handleGameOver(currentPlayer);
                 return;
             }
 
-            let skip = false;
+            let skipNext = false;
             if (card.value === 'reverse') {
-                if (gameState.players.length === 2) skip = true;
+                if (gameState.players.length === 2) skipNext = true;
                 else gameState.direction *= -1;
             } else if (card.value === 'skip') {
-                skip = true;
+                skipNext = true;
             } else if (card.value === '+2') {
-                let next = getNext(1);
-                drawFor(next, 2);
-                skip = true;
+                drawCardsForPlayer(getNextPlayerIndex(1), 2);
+                skipNext = true;
             } else if (card.value === '+4') {
-                let next = getNext(1);
-                drawFor(next, 4);
-                skip = true;
+                drawCardsForPlayer(getNextPlayerIndex(1), 4);
+                skipNext = true;
             }
-            advanceTurn(skip ? 2 : 1);
+
+            advanceTurn(skipNext ? 2 : 1);
         }
 
-        function drawFor(pIdx, count) {
+        function drawCardsForPlayer(playerIndex, count) {
+            const targetPlayer = gameState.players[playerIndex];
             for (let i = 0; i < count; i++) {
-                if (gameState.deck.length === 0) recycleDeck();
-                if (gameState.deck.length) gameState.players[pIdx].hand.push(gameState.deck.pop());
+                if (gameState.deck.length === 0) recycleDiscardPile();
+                if (gameState.deck.length > 0) targetPlayer.hand.push(gameState.deck.pop());
             }
         }
 
-        function drawCurrentPlayer() {
-            if (gameState.currentTurn !== myPlayerId) return;
-            drawFor(myPlayerId, 1);
+        function drawCardCurrentPlayer() {
+            const player = gameState.players[gameState.currentTurn];
+            drawCardsForPlayer(gameState.currentTurn, 1);
             updateUI();
-            document.getElementById('btn-pass').classList.remove('hidden');
-            syncStateToPeers();
+            
+            if (player.isAi) {
+                const drawnCard = player.hand[player.hand.length - 1];
+                if (isValidMove(drawnCard)) {
+                    setTimeout(() => playCard(gameState.currentTurn, drawnCard.id), 600);
+                } else {
+                    setTimeout(() => advanceTurn(1), 600);
+                }
+            } else {
+                document.getElementById('btn-pass').classList.remove('hidden');
+            }
         }
 
-        function recycleDeck() {
+        function recycleDiscardPile() {
             if (gameState.discardPile.length <= 1) return;
-            const top = gameState.discardPile.pop();
-            gameState.deck = gameState.discardPile.sort(() => Math.random() - 0.5);
-            gameState.discardPile = [top];
+            const topCard = gameState.discardPile.pop();
+            gameState.deck = shuffle(gameState.discardPile);
+            gameState.discardPile = [topCard];
             gameState.deck.forEach(c => { if (c.value === 'wild' || c.value === '+4') c.color = 'black'; });
         }
 
-        function getNext(steps) {
-            let total = gameState.players.length;
-            let n = (gameState.currentTurn + (steps * gameState.direction)) % total;
-            if (n < 0) n += total;
-            return n;
+        function getNextPlayerIndex(steps = 1) {
+            const total = gameState.players.length;
+            let nextIndex = (gameState.currentTurn + (steps * gameState.direction)) % total;
+            if (nextIndex < 0) nextIndex += total;
+            return nextIndex;
         }
 
-        function advanceTurn(steps) {
+        function advanceTurn(steps = 1) {
             document.getElementById('btn-pass').classList.add('hidden');
-            gameState.currentTurn = getNext(steps);
+            gameState.currentTurn = getNextPlayerIndex(steps);
             updateUI();
             checkBotTurn();
         }
 
         function checkBotTurn() {
-            const p = gameState.players[gameState.currentTurn];
-            if (!p || !p.isAi || gameState.isGameOver) return;
+            const player = gameState.players[gameState.currentTurn];
+            if (!player || !player.isAi || gameState.isGameOver) return;
+
             setTimeout(() => {
-                const playable = p.hand.filter(c => isValidMove(c));
-                if (playable.length > 0) {
-                    playCard(gameState.currentTurn, playable[0].id);
-                } else {
-                    drawFor(gameState.currentTurn, 1);
-                    advanceTurn(1);
+                if (player.hand.length === 2 && !player.unoSaid) {
+                    player.unoSaid = true;
+                    AudioEngine.playUnoSound();
                 }
-                updateUI();
+                const playableCards = player.hand.filter(c => isValidMove(c));
+                if (playableCards.length > 0) {
+                    const cardToPlay = playableCards[Math.floor(Math.random() * playableCards.length)];
+                    playCard(gameState.currentTurn, cardToPlay.id);
+                } else {
+                    drawCardCurrentPlayer();
+                }
             }, 1000);
         }
 
-        function endGame(winner) {
-            gameState.isGameOver = true;
-            document.getElementById('winner-name').textContent = `${winner.name} a gagné ! 🎉`;
-            document.getElementById('modal-game-over').classList.remove('hidden');
-            confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
-        }
-
-        // Synchronisation P2P
-        function syncStateToPeers() {
-            if (!isHost) return;
-            connections.forEach(conn => conn.send({ type: 'STATE_UPDATE', state: gameState }));
-        }
-
-        // --- INTERFACE (UI) & TOUCH IPAD OPTIMIZED ---
         function updateUI() {
-            const top = gameState.discardPile[gameState.discardPile.length - 1];
-            document.getElementById('discard-pile').innerHTML = renderCard(top, false);
+            const topCard = gameState.discardPile[gameState.discardPile.length - 1];
+            document.getElementById('discard-pile').innerHTML = renderCardHTML(topCard, false);
 
-            const dot = document.getElementById('current-color-dot');
-            dot.className = `w-4 h-4 rounded-full border border-white/40 color-${gameState.currentColor} ${gameState.colorblindMode ? 'colorblind-pattern' : ''}`;
+            const colorDot = document.getElementById('current-color-dot');
+            colorDot.className = `w-5 h-5 rounded-full border border-white/40 shadow-inner color-${gameState.currentColor} ${gameState.colorblindMode ? 'colorblind-pattern' : ''}`;
             document.getElementById('direction-arrow').textContent = gameState.direction === 1 ? '↻' : '↺';
             document.getElementById('deck-count').textContent = gameState.deck.length;
 
             const handEl = document.getElementById('player-hand');
-            const myPlayer = gameState.players[myPlayerId] || gameState.players[0];
+            const localPlayer = gameState.players[0];
             handEl.innerHTML = '';
 
-            myPlayer.hand.forEach(card => {
-                const playable = gameState.currentTurn === myPlayerId && isValidMove(card);
+            localPlayer.hand.forEach(card => {
+                const isPlayable = gameState.currentTurn === 0 && isValidMove(card);
                 const cardDiv = document.createElement('div');
-                cardDiv.className = `card-perspective cursor-pointer transition transform ${playable ? 'hover:-translate-y-3' : 'opacity-70'}`;
-                cardDiv.innerHTML = renderCard(card, playable);
+                cardDiv.className = `card-perspective cursor-pointer transition transform ${isPlayable ? 'hover:-translate-y-4 hover:scale-105' : 'opacity-75'}`;
+                cardDiv.innerHTML = renderCardHTML(card, isPlayable);
                 
-                // Événement Tactile et Clic unifié pour iPad / Safari
+                // --- SYSTÈMES DE CLIC OPTIMISÉS IPAD / SAFARI ---
                 const triggerAction = (e) => {
                     e.preventDefault();
-                    if (playable) playCard(myPlayerId, card.id);
+                    if (isPlayable) playCard(0, card.id);
                 };
                 cardDiv.onclick = triggerAction;
                 cardDiv.ontouchend = triggerAction;
@@ -461,66 +519,85 @@
             const othersEl = document.getElementById('other-players-container');
             othersEl.innerHTML = '';
             gameState.players.forEach((p, idx) => {
-                if (idx === myPlayerId) return;
-                const isCur = gameState.currentTurn === idx;
-                const div = document.createElement('div');
-                div.className = `flex flex-col items-center p-1.5 rounded-lg bg-slate-800 border ${isCur ? 'border-yellow-400 active-turn-ring' : 'border-slate-700'} min-w-[70px]`;
-                div.innerHTML = `
-                    <span class="text-[11px] font-bold ${isCur ? 'text-yellow-400' : 'text-slate-300'}">${p.name}</span>
-                    <span class="text-[10px] text-white">🎴 ${p.hand.length}</span>
+                if (idx === 0) return;
+                const isCurrent = gameState.currentTurn === idx;
+                const pDiv = document.createElement('div');
+                pDiv.className = `flex flex-col items-center p-2 rounded-xl bg-slate-800/80 border ${isCurrent ? 'border-yellow-400 active-turn-ring' : 'border-slate-700'} min-w-[80px]`;
+                pDiv.innerHTML = `
+                    <span class="text-xs font-bold ${isCurrent ? 'text-yellow-400' : 'text-slate-300'}">${p.name}</span>
+                    <div class="mt-1 flex items-center gap-1">
+                        <span class="text-xs">🎴</span>
+                        <span class="text-xs font-bold text-white">${p.hand.length}</span>
+                    </div>
+                    ${p.hand.length === 1 ? '<span class="text-[10px] bg-red-500 font-bold px-1 rounded mt-1">UNO</span>' : ''}
                 `;
-                othersEl.appendChild(div);
+                othersEl.appendChild(pDiv);
             });
 
             const turnText = document.getElementById('turn-text');
-            if (gameState.currentTurn === myPlayerId) {
-                turnText.textContent = "C'est votre tour !";
-                turnText.className = "text-xs font-bold text-yellow-400 animate-pulse";
+            if (gameState.currentTurn === 0) {
+                turnText.textContent = "C'est à votre tour de jouer !";
+                turnText.className = "text-sm font-bold text-yellow-400 animate-pulse";
             } else {
-                turnText.textContent = `Tour de ${gameState.players[gameState.currentTurn]?.name || 'Adverse'}...`;
-                turnText.className = "text-xs font-medium text-slate-400";
+                turnText.textContent = `Tour de ${gameState.players[gameState.currentTurn].name}...`;
+                turnText.className = "text-sm font-medium text-slate-400";
             }
         }
 
-        function renderCard(card, playable) {
-            const col = `color-${card.color} ${gameState.colorblindMode ? 'colorblind-pattern' : ''}`;
-            let sym = card.value;
-            if (sym === 'skip') sym = '🚫';
-            if (sym === 'reverse') sym = '⇄';
-            if (sym === 'wild') sym = '🌈';
+        function renderCardHTML(card, isPlayable) {
+            const colorClass = `color-${card.color} ${gameState.colorblindMode ? 'colorblind-pattern' : ''}`;
+            let symbol = card.value;
+            if (card.value === 'skip') symbol = '🚫';
+            if (card.value === 'reverse') symbol = '⇄';
+            if (card.value === 'wild') symbol = '🌈';
+            if (card.value === '+4') symbol = '+4';
 
             return `
-                <div class="w-16 h-24 sm:w-20 sm:h-28 rounded-lg ${col} border ${playable ? 'border-yellow-300 shadow-glow-' + card.color : 'border-white/20'} shadow-lg flex flex-col justify-between p-1.5 select-none card-inner">
-                    <span class="text-[10px] font-extrabold text-white">${sym}</span>
-                    <div class="self-center text-lg sm:text-xl font-black text-white">${sym}</div>
-                    <span class="text-[10px] font-extrabold text-white self-end rotate-180">${sym}</span>
+                <div class="w-20 h-28 sm:w-24 sm:h-36 rounded-xl ${colorClass} border-2 ${isPlayable ? 'border-yellow-300 shadow-glow-' + card.color : 'border-white/20'} shadow-xl flex flex-col justify-between p-2 relative select-none card-inner">
+                    <span class="text-xs font-extrabold text-white">${symbol}</span>
+                    <div class="self-center text-xl sm:text-2xl font-black text-white drop-shadow-md">${symbol}</div>
+                    <span class="text-xs font-extrabold text-white self-end transform rotate-180">${symbol}</span>
                 </div>
             `;
         }
 
-        // Listeners Boutons
+        function handleGameOver(winner) {
+            gameState.isGameOver = true;
+            document.getElementById('winner-name').textContent = `${winner.name} a remporté la partie ! 🎉`;
+            document.getElementById('modal-game-over').classList.remove('hidden');
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        }
+
         document.getElementById('deck-pile').onclick = () => {
-            if (gameState.currentTurn === myPlayerId) drawCurrentPlayer();
+            if (gameState.currentTurn === 0 && !gameState.isGameOver) drawCardCurrentPlayer();
+        };
+
+        document.getElementById('btn-uno').onclick = () => {
+            const localPlayer = gameState.players[0];
+            if (localPlayer.hand.length === 2 || localPlayer.hand.length === 1) {
+                localPlayer.unoSaid = true;
+                AudioEngine.playUnoSound();
+                alert("Vous avez annoncé UNO !");
+            }
         };
 
         document.getElementById('btn-pass').onclick = () => {
-            if (gameState.currentTurn === myPlayerId) advanceTurn(1);
+            if (gameState.currentTurn === 0) advanceTurn(1);
         };
 
         document.querySelectorAll('.btn-select-color').forEach(btn => {
-            const selectColorAction = (e) => {
+            const colorAction = (e) => {
                 e.preventDefault();
-                const col = e.target.getAttribute('data-color');
+                const color = e.target.getAttribute('data-color');
                 document.getElementById('modal-color-picker').classList.add('hidden');
-                if (pendingWildCard) {
-                    gameState.currentColor = col;
-                    applyEffects(pendingWildCard);
-                    pendingWildCard = null;
-                    syncStateToPeers();
+                if (gameState.pendingWildCard) {
+                    gameState.currentColor = color;
+                    applyCardEffects(gameState.pendingWildCard);
+                    gameState.pendingWildCard = null;
                 }
             };
-            btn.onclick = selectColorAction;
-            btn.ontouchend = selectColorAction;
+            btn.onclick = colorAction;
+            btn.ontouchend = colorAction;
         });
 
         document.getElementById('btn-colorblind').onclick = () => {
@@ -533,87 +610,34 @@
             document.getElementById('btn-sound').textContent = gameState.soundEnabled ? '🔊 Son' : '🔇 Muet';
         };
 
-        document.getElementById('btn-start-local').onclick = () => {
+        document.getElementById('btn-restart').onclick = () => {
+            document.getElementById('modal-game-over').classList.add('hidden');
             const count = parseInt(document.getElementById('select-player-count').value);
-            const name = document.getElementById('input-player-name').value || 'Moi';
-            startLocalGame(count, name);
+            const name = document.getElementById('input-player-name').value;
+            startGame(count, name);
+        };
+
+        document.getElementById('btn-leave').onclick = () => location.reload();
+
+        document.getElementById('btn-start-game').onclick = () => {
+            const count = parseInt(document.getElementById('select-player-count').value);
+            const name = document.getElementById('input-player-name').value || 'Joueur 1';
+            startGame(count, name);
         };
 
         document.getElementById('tab-local').onclick = () => {
             document.getElementById('panel-local').classList.remove('hidden');
             document.getElementById('panel-online').classList.add('hidden');
+            document.getElementById('tab-local').className = "flex-1 py-2 text-xs font-bold rounded-lg bg-slate-800 text-white shadow";
+            document.getElementById('tab-online').className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
         };
 
         document.getElementById('tab-online').onclick = () => {
             document.getElementById('panel-local').classList.add('hidden');
             document.getElementById('panel-online').classList.remove('hidden');
+            document.getElementById('tab-online').className = "flex-1 py-2 text-xs font-bold rounded-lg bg-slate-800 text-white shadow";
+            document.getElementById('tab-local').className = "flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition";
         };
-
-        document.getElementById('btn-leave').onclick = () => location.reload();
-
-        // Système P2P Réseau (PeerJS)
-        document.getElementById('btn-create-room').onclick = () => {
-            const code = 'UNO-' + Math.floor(1000 + Math.random() * 9000);
-            peer = new Peer(code);
-            isHost = true;
-            myPlayerId = 0;
-
-            peer.on('open', (id) => {
-                document.getElementById('room-badge').classList.remove('hidden');
-                document.getElementById('display-room-id').textContent = id;
-                document.getElementById('waiting-room-status').classList.remove('hidden');
-            });
-
-            peer.on('connection', (conn) => {
-                connections.push(conn);
-                conn.on('data', (data) => handlePeerData(data, conn));
-            });
-        };
-
-        document.getElementById('btn-join-room').onclick = () => {
-            const code = document.getElementById('input-room-code').value.trim().toUpperCase();
-            if (!code) return alert('Entrez un code de salon valide !');
-            
-            peer = new Peer();
-            isHost = false;
-
-            peer.on('open', () => {
-                const conn = peer.connect(code);
-                connections.push(conn);
-                
-                conn.on('open', () => {
-                    const name = document.getElementById('input-player-name').value || 'Ami';
-                    conn.send({ type: 'JOIN_REQUEST', name });
-                });
-
-                conn.on('data', (data) => handlePeerData(data, conn));
-            });
-        };
-
-        function handlePeerData(data, conn) {
-            if (data.type === 'JOIN_REQUEST' && isHost) {
-                // Ajouter le joueur au salon
-                const newPlayer = { id: gameState.players.length, name: data.name, hand: [], isAi: false, unoSaid: false };
-                gameState.players.push(newPlayer);
-                
-                // Distribuer 7 cartes
-                for (let i = 0; i < 7; i++) {
-                    if (gameState.deck.length) newPlayer.hand.push(gameState.deck.pop());
-                }
-
-                syncStateToPeers();
-                if (gameState.players.length >= 2 && gameState.discardPile.length === 0) {
-                    // Lancer la partie si premier joueur rejoint
-                    let first = gameState.deck.pop();
-                    gameState.discardPile.push(first);
-                    gameState.currentColor = first.color === 'black' ? 'red' : first.color;
-                }
-                switchToGameScreen();
-            } else if (data.type === 'STATE_UPDATE') {
-                gameState = data.state;
-                updateUI();
-            }
-        }
     </script>
 </body>
 </html>
